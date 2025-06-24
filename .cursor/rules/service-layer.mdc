@@ -1,0 +1,170 @@
+---
+description: 
+globs: 
+alwaysApply: true
+---
+# Service Layer - Padrões de Implementação
+
+## Responsabilidades da Camada de Aplicação
+
+### O que os Serviços DEVEM fazer:
+- **Orquestrar** casos de uso de negócio
+- **Coordenar** entre domínio e infraestrutura
+- **Validar** entrada de dados
+- **Tratar** erros de negócio
+- **Implementar** lógica de aplicação (não de domínio)
+
+### O que os Serviços NÃO DEVEM fazer:
+- **Implementar** regras de negócio (isso é do domínio)
+- **Acessar** diretamente infraestrutura (usar interfaces)
+- **Formatar** dados para apresentação (isso é da interface)
+- **Gerenciar** estado de transações complexas
+
+## Estrutura de Serviços
+
+### Nomenclatura e Organização
+```go
+// ✅ PADRÃO OBRIGATÓRIO
+type {Entidade}Service struct {
+    repository domain.{Entidade}Repository
+    // outras dependências...
+}
+
+// Constructor com injeção de dependência
+func New{Entidade}Service(repository domain.{Entidade}Repository) *{Entidade}Service {
+    return &{Entidade}Service{
+        repository: repository,
+    }
+}
+```
+
+### Métodos de Serviço
+- **Nomenclatura**: Use verbos em português para casos de uso
+- **Assinatura**: Parâmetros primitivos, retorno de entidade + erro
+- **Validação**: Sempre validar entrada antes de processar
+
+```go
+// ✅ EXEMPLOS CORRETOS
+func (s *TarefaService) CriarTarefa(descricao string) (*domain.Tarefa, error)
+func (s *TarefaService) ListarTarefas() ([]*domain.Tarefa, error)
+func (s *TarefaService) AtualizarTarefa(id int, descricao string) (*domain.Tarefa, error)
+func (s *TarefaService) ExcluirTarefa(id int) error
+```
+
+## Tratamento de Erros
+
+### Validação de Entrada
+```go
+// ✅ SEMPRE validar no início do método
+func (s *TarefaService) CriarTarefa(descricao string) (*domain.Tarefa, error) {
+    if descricao == "" {
+        return nil, errors.New("descrição da tarefa não pode estar vazia")
+    }
+    
+    // resto da lógica...
+}
+```
+
+### Propagação de Erros
+```go
+// ✅ Propagar erros do repositório adequadamente
+func (s *TarefaService) AtualizarTarefa(id int, descricao string) (*domain.Tarefa, error) {
+    tarefa, err := s.repository.FindByID(id)
+    if err != nil {
+        return nil, err
+    }
+    if tarefa == nil {
+        return nil, errors.New("tarefa não encontrada")
+    }
+    
+    // validação e lógica...
+}
+```
+
+## Coordenação com Domínio
+
+### Uso de Entidades
+```go
+// ✅ Criar entidades através de construtores do domínio
+func (s *TarefaService) CriarTarefa(descricao string) (*domain.Tarefa, error) {
+    tarefa := domain.NewTarefa(descricao)
+    tarefa.ID = s.repository.GetNextID()
+    
+    // Usar validações do domínio
+    if !tarefa.IsValid() {
+        return nil, errors.New("dados da tarefa são inválidos")
+    }
+    
+    err := s.repository.Save(tarefa)
+    return tarefa, err
+}
+```
+
+### Delegação para o Domínio
+```go
+// ✅ Deixar regras de negócio no domínio
+func (s *TarefaService) MarcarComoConcluida(id int) error {
+    tarefa, err := s.repository.FindByID(id)
+    if err != nil || tarefa == nil {
+        return errors.New("tarefa não encontrada")
+    }
+    
+    // Lógica de negócio fica na entidade
+    tarefa.MarcarComoConcluida()
+    
+    return s.repository.Update(tarefa)
+}
+```
+
+## Transações e Consistência
+
+### Para Operações Simples
+```go
+// ✅ Uma operação por método de serviço
+func (s *TarefaService) ExcluirTarefa(id int) error {
+    // Verificar se existe
+    tarefa, err := s.repository.FindByID(id)
+    if err != nil {
+        return err
+    }
+    if tarefa == nil {
+        return errors.New("tarefa não encontrada")
+    }
+    
+    // Executar operação
+    return s.repository.Delete(id)
+}
+```
+
+### Para Operações Complexas (Futuro)
+```go
+// ✅ Preparar para transações futuras
+func (s *TarefaService) MoverTarefaParaProjeto(tarefaID, projetoID int) error {
+    // Validações...
+    
+    // TODO: Implementar transação quando necessário
+    // tx := s.repository.BeginTransaction()
+    // defer tx.Rollback()
+    
+    // Operações múltiplas...
+    
+    // tx.Commit()
+    return nil
+}
+```
+
+## Testes e Mockabilidade
+
+### Estrutura Preparada para Testes
+```go
+// ✅ Interface permite fácil mock
+type TarefaService struct {
+    repository domain.TarefaRepository  // Interface = fácil de mockar
+}
+
+// ✅ Métodos retornam valores testáveis
+func (s *TarefaService) CriarTarefa(descricao string) (*domain.Tarefa, error) {
+    // Lógica determinística
+    // Retorno previsível
+}
+```

@@ -1,0 +1,73 @@
+---
+description: 
+globs: 
+alwaysApply: true
+---
+# Padrões Go - Convenções Obrigatórias
+
+## Estrutura de Arquivos
+
+### Organização de Diretórios
+```
+projeto/
+├── cmd/                    # Aplicações executáveis
+│   └── api/main.go        # Ponto de entrada da API
+├── internal/              # Código privado da aplicação
+│   ├── domain/           # Camada de domínio
+│   ├── application/      # Camada de aplicação
+│   ├── infrastructure/   # Camada de infraestrutura
+│   └── interfaces/       # Camada de interface
+├── pkg/                  # Bibliotecas públicas (se necessário)
+└── api/                  # Documentação da API
+```
+
+## Convenções de Código
+
+### Nomenclatura
+- **Pacotes**: Use nomes em minúsculas, sem underscores
+- **Interfaces**: Termine com sufixo apropriado (-er, -Repository, -Service)
+- **Structs**: Use PascalCase para exportadas, camelCase para internas
+- **Métodos**: Use PascalCase para exportados, camelCase para internos
+- **Constantes**: Use SCREAMING_SNAKE_CASE ou PascalCase
+
+### Padrões de Implementação
+- **Construtores**: Use padrão `NewXxx()` para criar instâncias
+- **Interfaces**: Mantenha pequenas e focadas (Interface Segregation)
+- **Error Handling**: Sempre trate erros explicitamente
+- **Context**: Use context.Context para operações que podem ser canceladas
+
+### Imports
+- **Orden**: stdlib, third-party, internal packages
+- **Alias**: Use apenas quando necessário para evitar conflitos
+- **Grouping**: Separe grupos com linha em branco
+
+## Exemplo de Estrutura de Arquivo
+```go
+package domain
+
+import (
+    "context"
+    "errors"
+)
+
+// Interface primeiro
+type Repository interface {
+    Save(ctx context.Context, entity *Entity) error
+    FindByID(ctx context.Context, id int) (*Entity, error)
+}
+
+// Entidade com validações
+type Entity struct {
+    ID   int    `json:"id"`
+    Name string `json:"name"`
+}
+
+// Constructor
+func NewEntity(name string) *Entity {
+    return &Entity{Name: name}
+}
+
+// Método de validação
+func (e *Entity) IsValid() bool {
+    return e.Name != ""
+}

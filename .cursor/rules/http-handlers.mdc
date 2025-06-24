@@ -1,0 +1,117 @@
+---
+description: 
+globs: 
+alwaysApply: true
+---
+# HTTP Handlers - Padrões de Implementação
+
+## Estrutura de Handlers
+
+### Organização de Arquivos
+- **Um handler por entidade**: `tarefa_handler.go`, `usuario_handler.go`
+- **Nome do struct**: `{Entidade}Handler` (ex: `TarefaHandler`)
+- **Métodos privados**: Para operações específicas (ex: `listarTarefas()`)
+
+### Padrão de Implementação
+
+```go
+type TarefaHandler struct {
+    service *application.TarefaService
+}
+
+// Constructor
+func NewTarefaHandler(service *application.TarefaService) *TarefaHandler {
+    return &TarefaHandler{service: service}
+}
+
+// Registro de rotas
+func (h *TarefaHandler) RegisterRoutes() {
+    http.HandleFunc("/tarefas", h.handleTarefas)
+    http.HandleFunc("/tarefas/", h.handleTarefaByID)
+}
+```
+
+## Convenções de Rotas
+
+### Padrões REST
+- **GET /resource** - Listar todos
+- **POST /resource** - Criar novo
+- **GET /resource/{id}** - Obter por ID
+- **PUT /resource/{id}** - Atualizar
+- **DELETE /resource/{id}** - Excluir
+
+### Nomes de Métodos
+- `handle{Entidade}s()` - Para operações de coleção
+- `handle{Entidade}ByID()` - Para operações individuais
+- `listar{Entidade}s()` - Para GET de coleção
+- `criar{Entidade}()` - Para POST
+- `atualizar{Entidade}()` - Para PUT
+- `excluir{Entidade}()` - Para DELETE
+
+## Tratamento de Erros
+
+### Códigos de Status HTTP
+```go
+// ✅ PADRÃO OBRIGATÓRIO
+switch {
+case err == nil:
+    // Success - 200, 201, 204
+case errors.Is(err, domain.ErrNotFound):
+    w.WriteHeader(http.StatusNotFound)
+case errors.Is(err, domain.ErrInvalidData):
+    w.WriteHeader(http.StatusBadRequest)
+default:
+    w.WriteHeader(http.StatusInternalServerError)
+}
+```
+
+### Validação de Entrada
+```go
+// ✅ SEMPRE validar entrada
+if request.Campo == "" {
+    w.WriteHeader(http.StatusBadRequest)
+    w.Write([]byte("Campo é obrigatório"))
+    return
+}
+```
+
+## Content-Type e Response
+
+### Headers Obrigatórios
+```go
+// ✅ SEMPRE definir Content-Type para JSON
+w.Header().Set("Content-Type", "application/json")
+```
+
+### Estrutura de Request/Response
+```go
+// ✅ Use structs anônimos para requests simples
+var request struct {
+    Descricao string `json:"descricao"`
+}
+
+// ✅ Use structs nomeados para responses complexos
+type TarefaResponse struct {
+    ID        int    `json:"id"`
+    Descricao string `json:"descricao"`
+    Status    string `json:"status"`
+}
+```
+
+## Extração de Parâmetros
+
+### Path Parameters
+```go
+// ✅ PADRÃO para extrair ID da URL
+path := strings.TrimPrefix(r.URL.Path, "/tarefas/")
+if path == "" {
+    w.WriteHeader(http.StatusBadRequest)
+    return
+}
+
+id, err := strconv.Atoi(path)
+if err != nil {
+    w.WriteHeader(http.StatusBadRequest)
+    return
+}
+```

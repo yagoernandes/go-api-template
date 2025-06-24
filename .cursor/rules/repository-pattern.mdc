@@ -1,0 +1,136 @@
+---
+description: 
+globs: 
+alwaysApply: true
+---
+# Repository Pattern - Padrões de Implementação
+
+## Interface de Repositório (Domain Layer)
+
+### Localização
+- **SEMPRE** definir interfaces em `internal/domain/repository.go`
+- **NUNCA** colocar implementações no domain
+
+### Nomenclatura de Interface
+```go
+// ✅ PADRÃO OBRIGATÓRIO
+type {Entidade}Repository interface {
+    FindAll() ([]*{Entidade}, error)
+    FindByID(id int) (*{Entidade}, error)
+    Save(entity *{Entidade}) error
+    Update(entity *{Entidade}) error
+    Delete(id int) error
+    GetNextID() int  // Para repositórios em memória
+}
+```
+
+### Assinatura de Métodos
+- **FindAll()**: Retorna slice de ponteiros
+- **FindByID()**: Retorna ponteiro ou nil (não erro se não encontrar)
+- **Save()**: Para criar novos registros
+- **Update()**: Para atualizar registros existentes
+- **Delete()**: Remove por ID
+- **GetNextID()**: Para geradores de ID (repositórios em memória)
+
+## Implementação de Repositório (Infrastructure Layer)
+
+### Localização
+- **SEMPRE** implementar em `internal/infrastructure/repository/`
+- **Nome do arquivo**: `{storage_type}_{entity}_repository.go`
+- **Exemplo**: `in_memory_tarefa_repository.go`
+
+### Estrutura de Implementação
+```go
+// ✅ PADRÃO OBRIGATÓRIO
+type InMemory{Entidade}Repository struct {
+    entities []*domain.{Entidade}
+    nextID   int
+}
+
+// Constructor
+func NewInMemory{Entidade}Repository() domain.{Entidade}Repository {
+    return &InMemory{Entidade}Repository{
+        entities: make([]*domain.{Entidade}, 0),
+        nextID:   1,
+    }
+}
+```
+
+## Tratamento de Erros
+
+### FindByID - Retorno de Não Encontrado
+```go
+// ✅ CORRETO - Retorna nil sem erro
+func (r *InMemoryRepository) FindByID(id int) (*domain.Entity, error) {
+    for _, entity := range r.entities {
+        if entity.ID == id {
+            return entity, nil
+        }
+    }
+    return nil, nil  // Não encontrado, sem erro
+}
+```
+
+### Save e Update - Validações
+```go
+// ✅ SEMPRE validar entrada
+func (r *InMemoryRepository) Save(entity *domain.Entity) error {
+    if entity == nil {
+        return errors.New("entidade não pode ser nula")
+    }
+    
+    r.entities = append(r.entities, entity)
+    return nil
+}
+```
+
+### Delete - Tratamento de Não Encontrado
+```go
+// ✅ Retornar erro se não encontrar para deletar
+func (r *InMemoryRepository) Delete(id int) error {
+    for i, entity := range r.entities {
+        if entity.ID == id {
+            r.entities = append(r.entities[:i], r.entities[i+1:]...)
+            return nil
+        }
+    }
+    return errors.New("entidade não encontrada para exclusão")
+}
+```
+
+## Injeção de Dependência
+
+### No main.go
+```go
+// ✅ PADRÃO OBRIGATÓRIO
+func main() {
+    // Infrastructure
+    tarefaRepository := repository.NewInMemoryTarefaRepository()
+    
+    // Application
+    tarefaService := application.NewTarefaService(tarefaRepository)
+    
+    // Interface
+    tarefaHandler := http.NewTarefaHandler(tarefaService)
+}
+```
+
+## Extensibilidade
+
+### Para Adicionar Novo Storage
+1. Criar nova implementação em `infrastructure/repository/`
+2. Implementar a mesma interface do domain
+3. Trocar apenas no `main.go`
+4. **NUNCA** modificar domain ou application
+
+### Exemplo de Extensão
+```go
+// Futuro: database_tarefa_repository.go
+type DatabaseTarefaRepository struct {
+    db *sql.DB
+}
+
+func NewDatabaseTarefaRepository(db *sql.DB) domain.TarefaRepository {
+    return &DatabaseTarefaRepository{db: db}
+}
+```

@@ -1,0 +1,41 @@
+---
+description: 
+globs: 
+alwaysApply: true
+---
+# Arquitetura DDD - Regras Fundamentais
+
+Este projeto segue rigorosamente a arquitetura Domain-Driven Design (DDD) com as seguintes camadas:
+
+## Estrutura de Camadas Obrigatória
+
+### 1. Domain (internal/domain/)
+- **Entidades**: Objetos de negócio com identidade única
+- **Interfaces**: Contratos para repositórios e serviços externos
+- **Regras de Negócio**: Validações e lógicas fundamentais do domínio
+- **NUNCA** depende de outras camadas
+- **SEMPRE** use interfaces para contratos externos
+
+### 2. Application (internal/application/)
+- **Serviços de Aplicação**: Orquestram casos de uso
+- **Lógica de Aplicação**: Coordenação entre domínio e infraestrutura
+- **Pode** depender do Domain
+- **NUNCA** acesse diretamente Infrastructure
+
+### 3. Infrastructure (internal/infrastructure/)
+- **Repositórios**: Implementações concretas para persistência
+- **Adaptadores**: Integrações com sistemas externos
+- **Implementa** interfaces definidas no Domain
+
+### 4. Interfaces (internal/interfaces/)
+- **Handlers**: Entrada da aplicação (HTTP, CLI, etc.)
+- **Apresentação**: Formatação de dados para saída
+- **Pode** depender de Application, **NUNCA** de Infrastructure diretamente
+
+## Princípios Obrigatórios
+
+1. **Inversão de Dependência**: Domain não conhece Infrastructure
+2. **Injeção de Dependência**: Configure todas as dependências no main.go
+3. **Interfaces First**: Sempre defina contratos antes de implementações
+4. **Single Responsibility**: Cada arquivo/struct tem uma responsabilidade única
+5. **Nomenclature**: Use nomes expressivos em português para o domínio de negócio

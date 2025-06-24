@@ -1,0 +1,67 @@
+---
+description: 
+globs: 
+alwaysApply: true
+---
+# Convenções de Nomenclatura - Domínio e Negócio
+
+## Idioma e Terminologia
+
+### Domínio de Negócio - PORTUGUÊS
+- **Entidades**: Use nomes em português (`Tarefa`, `Usuario`, `Pedido`)
+- **Campos**: Use nomes descritivos em português (`Descricao`, `DataCriacao`)
+- **Métodos de Negócio**: Use verbos em português (`CriarTarefa()`, `AtualizarStatus()`)
+- **Validações**: Use nomes descritivos (`IsValido()`, `PodeSerExcluido()`)
+
+### Código Técnico - INGLÊS
+- **Interfaces**: Use sufixos em inglês (`TarefaRepository`, `EmailService`)
+- **Métodos Técnicos**: Use verbos em inglês (`Save()`, `FindByID()`, `Delete()`)
+- **Constantes Técnicas**: Use inglês (`StatusActive`, `DefaultTimeout`)
+
+## Padrões Específicos
+
+### Entidades de Domínio
+```go
+// ✅ CORRETO
+type Tarefa struct {
+    ID        int    `json:"id"`
+    Descricao string `json:"descricao"`
+    Status    string `json:"status"`
+}
+
+func (t *Tarefa) IsValida() bool { /* ... */ }
+func (t *Tarefa) MarcarComoConcluida() { /* ... */ }
+```
+
+### Interfaces de Repositório
+```go
+// ✅ CORRETO
+type TarefaRepository interface {
+    Save(tarefa *Tarefa) error
+    FindByID(id int) (*Tarefa, error)
+    FindAll() ([]*Tarefa, error)
+    Update(tarefa *Tarefa) error
+    Delete(id int) error
+}
+```
+
+### Serviços de Aplicação
+```go
+// ✅ CORRETO
+type TarefaService struct {
+    repository TarefaRepository
+}
+
+func (s *TarefaService) CriarTarefa(descricao string) (*Tarefa, error) { /* ... */ }
+func (s *TarefaService) ListarTarefas() ([]*Tarefa, error) { /* ... */ }
+```
+
+### JSON Tags
+- **SEMPRE** use tags JSON em português para APIs
+- **SEMPRE** use snake_case ou camelCase conforme padrão da API
+- **Exemplo**: `json:"descricao"` ou `json:"data_criacao"`
+
+### Mensagens de Erro
+- **Domínio**: Mensagens em português para usuários finais
+- **Técnico**: Mensagens em inglês para logs e debugging
+- **Validação**: Mensagens claras e específicas em português
